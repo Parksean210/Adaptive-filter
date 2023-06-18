@@ -1,4 +1,4 @@
-classdef AdaptiveFilterEqualization
+classdef AdaptiveFilterEqualization < handle
     %UNTITLED 이 클래스의 요약 설명 위치
     %   자세한 설명 위치
     
@@ -7,6 +7,19 @@ classdef AdaptiveFilterEqualization
         f
         type
         num_fft
+        true_parameter
+        init_parameter
+        est_parameter
+        learning_rate
+        tf_eq
+        tf_ind
+        tf_est_eq
+        tf_est_ind
+        sos
+        input
+        target
+        output
+        error
     end
     
     properties (Access=private)
@@ -15,33 +28,38 @@ classdef AdaptiveFilterEqualization
     end
     
     methods
-        function obj = AdaptiveFilterEqualization(samplerate, type, num_fft)
+        function obj = AdaptiveFilterEqualization(samplerate, type, num_fft, true_parameter, init_parameter, learning_rate, input)
             %UNTITLED 이 클래스의 인스턴스 생성
             %   자세한 설명 위치
             obj.fs = samplerate;
             obj.type = type;
             obj.num_fft = num_fft;
             obj.f = (0:obj.num_fft-1)'/obj.num_fft*obj.fs;
+            obj.true_parameter = true_parameter;
+            obj.init_parameter = init_parameter;
+            obj.learning_rate = learning_rate;
+            obj.input = input;
             obj.z1 = exp(-2*pi*1i/obj.num_fft*(0:obj.num_fft - 1)'*(0:1));
             obj.z2 = exp(-2*pi*1i/obj.num_fft*(0:obj.num_fft - 1)'*(0:2));
         end
         
-        function tf_lsf = get_tf_lsf(obj, G, fc)
-            %METHOD1 이 메서드의 요약 설명 위치
-            %   자세한 설명 위치
-            V0 = 10^(G/20);
-            H0 = V0 - 1;
-            
-            if G > 0 % boost
-                a = (tan(pi*fc/obj.fs) - 1)/(tan(pi*fc/obj.fs) + 1);
-            else % cut
-                a = (tan(pi*fc/obj.fs) - V0)/(tan(pi*fc/obj.fs) + V0);
-            end
-            
-            A1 = obj.z1*[a; 1]./obj.z1*[1; a];
-            
-            tf_lsf = 1 + H0/2*(1 + A1);
-        end
+        % first-order low shelf filter
+        [tf_lsf, num, den] = get_tf_lsf(obj, G, fc)
+        % first-order high shelf filter
+        [tf_hsf, num, den] = get_tf_hsf(obj, G, fc)
+        % second-order peak filter
+        [tf_pf, num, den] = get_tf_pf(obj, G, fb, fc)
+        % total tf
+        get_tf(obj)
+        % estimated tf
+        get_est_tf(obj)
+        % filter inputs
+        filter_eq(obj)
+        % adaptation
+        adapt_parameter(obj)
+        
+        
+        
     end
 end
 
